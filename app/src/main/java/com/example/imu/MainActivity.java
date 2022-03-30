@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -40,11 +41,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     List<Entry> lineDataZ;
     int counter=0;
     int lim=500;
+    Activity av;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        av = this;
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
         onRequestPermissionsResult(1,new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},grantResults);
@@ -95,7 +98,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         textView.setText(fname);
                     }
                 });
-                writetofile(fname);
+                FileOperations.writetofile(av,fname);
             }
         });
     }
@@ -109,41 +112,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(this);
-    }
-
-    public void writetofile(String fname) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    String dir = getExternalFilesDir(null).toString();
-                    File path = new File(dir);
-                    if (!path.exists()) {
-                        path.mkdirs();
-                    }
-                    File file = new File(dir, fname+"-acc.txt");
-                    BufferedWriter outfile = new BufferedWriter(new FileWriter(file,false));
-                    for (int i = 0; i < Constants.accx.size(); i++) {
-                        outfile.append(Constants.accx.get(i)+","+Constants.accy.get(i)+","+Constants.accz.get(i));
-                        outfile.newLine();
-                    }
-                    outfile.flush();
-                    outfile.close();
-
-                    file = new File(dir, fname+"-grav.txt");
-                    outfile = new BufferedWriter(new FileWriter(file,false));
-                    for (int i = 0; i < Constants.gravx.size(); i++) {
-                        outfile.append(Constants.gravx.get(i)+","+Constants.gravy.get(i)+","+Constants.gravz.get(i));
-                        outfile.newLine();
-                    }
-                    outfile.flush();
-                    outfile.close();
-                } catch(Exception e) {
-                    Log.e("ex", "writeRecToDisk");
-                    Log.e("ex", e.getMessage());
-                }
-            }
-        }).run();
     }
 
     @Override
