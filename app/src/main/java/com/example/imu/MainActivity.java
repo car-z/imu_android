@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SensorManager sensorManager;
     private Sensor gravitySensor;
     private TextView textView;
-    private Sensor accelerometer,gyroscope;
+    private Sensor accelerometer,gyroscope,rot;
     private LineChart lineChart;
     private int grantResults[];
     List<Entry> lineDataX;
@@ -63,9 +63,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        rot = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
         sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, rot, SensorManager.SENSOR_DELAY_FASTEST);
 
         // on click listeners
         Constants.startButton.setOnClickListener(new View.OnClickListener() {
@@ -115,8 +117,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     float thetaHat2=0;
     float gyroTilt=0;
     float gyroTilt2=0;
+    float gyroTilt3=0;
+    float prevcomp=0;
     float accTilt=0;
     float accTilt2=0;
+    float gt_tilt=0;
     boolean gotacc=false;
     boolean gotgyro=false;
     private final float[] deltaRotationVector = new float[4];
@@ -165,14 +170,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
             else if (sensorEvent.sensor.equals(gyroscope)) {
                 double ts = sensorEvent.timestamp;
-                double dT = ((ts - timestamp)*NS2S)*2;
+                double dT = ((ts - timestamp)*NS2S);
                 timestamp=ts;
 
                 if (dT>0 && dT<1) {
                     float p = sensorEvent.values[0];
                     float q = sensorEvent.values[1];
                     float r = sensorEvent.values[2];
-//
+                    float omegaMagnitude = (float)Math.sqrt(p*p+q*q+r*r);
+
                     float phiDot=(float)(p+Math.tan(thetaHat)*(Math.sin(phiHat)*q+Math.cos(phiHat)+r));
                     float thetaDot=(float)(Math.cos(phiHat)*q-Math.sin(phiHat)+r);
 
@@ -183,20 +189,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                     gyroTilt=(float)Math.sqrt(phiHat*phiHat+thetaHat*thetaHat)*rad2deg;
                     gyroTilt2=(float)Math.sqrt(phiHat2*phiHat2+thetaHat2*thetaHat2)*rad2deg;
-
-//                    graphData(new float[]{gyroTilt,0,0});
+                    gyroTilt3=(float)Math.sqrt(dT*p*dT*p+dT*q*dT*q)*rad2deg;
+//                    graphData(new float[]{orientation[0],orientation[1],orientation[2]});
                     gotgyro=true;
                 }
             }
+            else if (sensorEvent.sensor.getType() == Sensor.TYPE_GAME_ROTATION_VECTOR) {
+                float[] orientationVals=new float[4];
+                float[] mRotationMatrix=new float[9];
+                // Convert the rotation-vector to a 4x4 matrix.
+                SensorManager.getRotationMatrixFromVector(mRotationMatrix,
+                        sensorEvent.values);
+                SensorManager
+                        .remapCoordinateSystem(mRotationMatrix,
+                                SensorManager.AXIS_X, SensorManager.AXIS_Y,
+                                mRotationMatrix);
+                SensorManager.getOrientation(mRotationMatrix, orientationVals);
+                float roll = (float) Math.toDegrees(orientationVals[2]);
+                SensorManager
+                        .remapCoordinateSystem(mRotationMatrix,
+                                SensorManager.AXIS_X, SensorManager.AXIS_MINUS_Y,
+                                mRotationMatrix);
+                SensorManager.getOrientation(mRotationMatrix, orientationVals);
+                float pitch = (float) Math.toDegrees(orientationVals[1]);
+
+                gt_tilt=(float)Math.sqrt(roll*roll+pitch*pitch);
+
+//                graphData(new float[]{gt_tilt,0,0});
+            }
+
             if (gotacc&&gotgyro) {
                 float alpha=.98f;
-                if (counter==0) {
-                    bias_acc=accTilt;
-                    bias_gyro=gyroTilt;
-                }
+//                if (counter==0) {
+//                    bias_acc=accTilt;
+//                    bias_gyro=gyroTilt;
+//                }
 
-                float comp=(alpha*(gyroTilt-bias_gyro))+((1-alpha)*(accTilt-bias_acc));
-                graphData(new float[]{accTilt-bias_acc,gyroTilt-bias_gyro,comp});
+                float comp=alpha*(prevcomp+gyroTilt3)+(1-alpha)*accTilt;
+                prevcomp=comp;
+
+                graphData(new float[]{comp,0,0});
                 gotacc=false;
                 gotgyro=false;
             }
@@ -243,6 +275,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, rot, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     protected void onPause() {
