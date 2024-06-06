@@ -27,9 +27,8 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     private SensorManager sensorManager;
-    private Sensor gravitySensor;
     private TextView textView;
-    private Sensor accelerometer,gyroscope,rot;
+    private Sensor accelerometer;
     private LineChart lineChart;
     private int grantResults[];
     List<Entry> lineDataX;
@@ -60,14 +59,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // defining sensors
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        rot = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
-        sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this, rot, SensorManager.SENSOR_DELAY_FASTEST);
 
         // on click listeners
         Constants.startButton.setOnClickListener(new View.OnClickListener() {
@@ -107,133 +100,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         });
     }
 
-    private static final double NS2S = 1.0 / 1000000000.0;
-    private double timestamp;
     float grav=9.81f;
-    float rad2deg=57.2958f;
-    float phiHat=0;
-    float thetaHat=0;
-    float phiHat2=0;
-    float thetaHat2=0;
-    float gyroTilt=0;
-    float gyroTilt2=0;
-    float gyroTilt3=0;
-    float prevcomp=0;
-    float accTilt=0;
-    float accTilt2=0;
-    float gt_tilt=0;
     boolean gotacc=false;
-    boolean gotgyro=false;
-    private final float[] deltaRotationVector = new float[4];
-    float[] rotationMatrix=new float[9];
-    float[] orientation=new float[3];
-    float bias_acc=0;
-    float bias_gyro=0;
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         if (Constants.start) {
             if (sensorEvent.sensor.equals(accelerometer)) {
-                double ts = sensorEvent.timestamp;
-                double dT = (ts - timestamp)*NS2S;
-                timestamp=ts;
-//                Log.e("asdf","ts "+dT);
                 float x = sensorEvent.values[0]/grav;
                 float y = sensorEvent.values[1]/grav;
                 float z = sensorEvent.values[2]/grav;
                 Constants.accx.add(x);
                 Constants.accy.add(y);
                 Constants.accz.add(z);
-//                Log.e("asdf",sensorEvent.values[2]+"");
-//                float phi=(float)Math.atan(sensorEvent.values[1]/sensorEvent.values[2]);
-//                float theta=(float)Math.asin(sensorEvent.values[0]/grav);
-//                phi*=57.2958;
-//                theta*=57.2958;
-//                float phi =
-
-//                float phi=(float)Math.atan(y/z)*rad2deg;
-//                float theta=(float)Math.atan(-x/Math.sqrt(y*y+z*z))*rad2deg;
-
-                float phi=(float)Math.atan2(y,z)*rad2deg;
-                float theta=(float)Math.atan2(-x,Math.sqrt(y*y+z*z))*rad2deg;
-                float modulus = (float)Math.sqrt(x*x+y*y+z*z);
-                accTilt = (float)Math.acos(z/modulus)*rad2deg;
-                accTilt2=(float)Math.sqrt(phi*phi+theta*theta)*rad2deg;
-
-//                float phi=(float)Math.atan(y/Math.sqrt(x*x+z*z))*rad2deg;
-//                float theta=(float)Math.atan(-x/z)*rad2deg;
-
-//                graphData(new float[]{tilt,tilt2,0});
-//                graphData(new float[]{accTilt,0,0});
-//                graphData(new float[]{x,y,z});
+                graphData(new float[]{x,y,z});
                 gotacc=true;
             }
-            else if (sensorEvent.sensor.equals(gyroscope)) {
-                double ts = sensorEvent.timestamp;
-                double dT = ((ts - timestamp)*NS2S);
-                timestamp=ts;
-
-                if (dT>0 && dT<1) {
-                    float p = sensorEvent.values[0];
-                    float q = sensorEvent.values[1];
-                    float r = sensorEvent.values[2];
-                    float omegaMagnitude = (float)Math.sqrt(p*p+q*q+r*r);
-
-                    float phiDot=(float)(p+Math.tan(thetaHat)*(Math.sin(phiHat)*q+Math.cos(phiHat)+r));
-                    float thetaDot=(float)(Math.cos(phiHat)*q-Math.sin(phiHat)+r);
-
-                    phiHat += dT*p;
-                    thetaHat += dT*q;
-                    phiHat2 += dT*phiDot;
-                    thetaHat2 += dT*thetaDot;
-
-                    gyroTilt=(float)Math.sqrt(phiHat*phiHat+thetaHat*thetaHat)*rad2deg;
-                    gyroTilt2=(float)Math.sqrt(phiHat2*phiHat2+thetaHat2*thetaHat2)*rad2deg;
-                    gyroTilt3=(float)Math.sqrt(dT*p*dT*p+dT*q*dT*q)*rad2deg;
-//                    graphData(new float[]{orientation[0],orientation[1],orientation[2]});
-                    gotgyro=true;
-                }
-            }
-            else if (sensorEvent.sensor.getType() == Sensor.TYPE_GAME_ROTATION_VECTOR) {
-                float[] orientationVals=new float[4];
-                float[] mRotationMatrix=new float[9];
-                // Convert the rotation-vector to a 4x4 matrix.
-                SensorManager.getRotationMatrixFromVector(mRotationMatrix,
-                        sensorEvent.values);
-                SensorManager
-                        .remapCoordinateSystem(mRotationMatrix,
-                                SensorManager.AXIS_X, SensorManager.AXIS_Y,
-                                mRotationMatrix);
-                SensorManager.getOrientation(mRotationMatrix, orientationVals);
-                float roll = (float) Math.toDegrees(orientationVals[2]);
-                SensorManager
-                        .remapCoordinateSystem(mRotationMatrix,
-                                SensorManager.AXIS_X, SensorManager.AXIS_MINUS_Y,
-                                mRotationMatrix);
-                SensorManager.getOrientation(mRotationMatrix, orientationVals);
-                float pitch = (float) Math.toDegrees(orientationVals[1]);
-
-                gt_tilt=(float)Math.sqrt(roll*roll+pitch*pitch);
-
-//                graphData(new float[]{gt_tilt,0,0});
-            }
-
-            if (gotacc&&gotgyro) {
-                float alpha=.98f;
-//                if (counter==0) {
-//                    bias_acc=accTilt;
-//                    bias_gyro=gyroTilt;
-//                }
-
-                float comp=alpha*(prevcomp+gyroTilt3)+(1-alpha)*accTilt;
-                prevcomp=comp;
-
-                graphData(new float[]{comp,0,0});
-                gotacc=false;
-                gotgyro=false;
-            }
-
-//            Log.e("log",String.format("%s %.2f %.2f %.2f",sensorEvent.sensor.getName(),sensorEvent.values[0],sensorEvent.values[1],sensorEvent.values[2]));
         }
     }
 
@@ -264,18 +146,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         LineData lineData = new LineData(data);
         lineChart.setData(lineData);
-        lineChart.getAxisLeft().setAxisMaximum(90);
-        lineChart.getAxisLeft().setAxisMinimum(-90);
+//        lineChart.getAxisLeft().setAxisMaximum(90);
+//        lineChart.getAxisLeft().setAxisMinimum(-90);
         lineChart.notifyDataSetChanged();
         lineChart.invalidate();
     }
 
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this, rot, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     protected void onPause() {
