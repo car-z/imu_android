@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SensorManager sensorManager;
     private TextView textView;
     private Sensor accelerometer;
+    private Sensor mysensor;
     private LineChart lineChart;
     private int grantResults[];
     List<Entry> lineDataX;
@@ -60,7 +61,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // defining sensors
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        mysensor=accelerometer;
+        sensorManager.registerListener(this, mysensor, SensorManager.SENSOR_DELAY_FASTEST);
 
         // on click listeners
         Constants.startButton.setOnClickListener(new View.OnClickListener() {
@@ -106,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         if (Constants.start) {
-            if (sensorEvent.sensor.equals(accelerometer)) {
+            if (sensorEvent.sensor.equals(mysensor)) {
                 float x = sensorEvent.values[0]/grav;
                 float y = sensorEvent.values[1]/grav;
                 float z = sensorEvent.values[2]/grav;
@@ -154,7 +156,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, mysensor, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     protected void onPause() {
