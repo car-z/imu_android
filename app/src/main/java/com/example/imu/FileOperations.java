@@ -27,15 +27,15 @@ public class FileOperations {
                     }
                     outfile.flush();
                     outfile.close();
-
-                    file = new File(dir, fname+"-grav.txt");
-                    outfile = new BufferedWriter(new FileWriter(file,false));
-                    for (int i = 0; i < Constants.gravx.size(); i++) {
-                        outfile.append(Constants.gravx.get(i)+","+Constants.gravy.get(i)+","+Constants.gravz.get(i));
-                        outfile.newLine();
-                    }
-                    outfile.flush();
-                    outfile.close();
+//
+//                    file = new File(dir, fname+"-grav.txt");
+//                    outfile = new BufferedWriter(new FileWriter(file,false));
+//                    for (int i = 0; i < Constants.gravx.size(); i++) {
+//                        outfile.append(Constants.gravx.get(i)+","+Constants.gravy.get(i)+","+Constants.gravz.get(i));
+//                        outfile.newLine();
+//                    }
+//                    outfile.flush();
+//                    outfile.close();
 
                     file = new File(dir, fname+"-gyro.txt");
                     outfile = new BufferedWriter(new FileWriter(file, false));
